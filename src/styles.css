@@ -1,0 +1,985 @@
+import './styles.css';
+
+const app = document.querySelector('#app');
+
+const translations = {
+  de: {
+    appName: 'OP Auto Clicker',
+    ready: 'Bereit',
+    running: 'Läuft',
+    paused: 'Pausiert',
+    stopped: 'Gestoppt',
+    home: 'Home',
+    clicker: 'Clicker',
+    presets: 'Presets',
+    history: 'Verlauf',
+    settings: 'Einstellungen',
+    interval: 'Intervall',
+    click: 'Klick',
+    type: 'Typ',
+    count: 'Anzahl',
+    start: 'Start',
+    stop: 'Stop',
+    pause: 'Pause',
+    resume: 'Resume',
+    reset: 'Reset',
+    clickTypeSingle: 'Single Click',
+    clickTypeDouble: 'Double Click',
+    left: 'Links',
+    right: 'Rechts',
+    middle: 'Mitte',
+    infinite: '∞',
+    startDelay: 'Start Delay',
+    randomInterval: 'Zufallsintervall',
+    min: 'Min',
+    max: 'Max',
+    quickPresets: 'Quick Presets',
+    recentSessions: 'Letzte Sessions',
+    session: 'Session',
+    noPresets: 'No presets yet.',
+    noSessions: 'No sessions yet.',
+    createPreset: '+ Create Preset',
+    savePreset: 'Preset speichern',
+    save: 'Speichern',
+    cancel: 'Abbrechen',
+    confirm: 'Bestätigen',
+    settingsTitle: 'Einstellungen',
+    theme: 'Theme',
+    language: 'Sprache',
+    export: 'Exportieren',
+    import: 'Importieren',
+    clearHistory: 'Verlauf löschen',
+    resetApp: 'App zurücksetzen',
+    demoMode: 'Demo-Modus',
+    currentHotkey: 'Aktiver Hotkey',
+    changeHotkey: 'Hotkey ändern',
+    clickStats: 'Klicks',
+    cps: 'CPS',
+    time: 'Zeit',
+    virtualScreen: 'Virtual Screen',
+    simpleMode: 'Simple',
+    advancedMode: 'Advanced',
+    hours: 'Stunden',
+    minutes: 'Minuten',
+    seconds: 'Sekunden',
+    milliseconds: 'Millisekunden',
+    statusReady: 'Bereit',
+    statusRunning: 'Läuft',
+    statusPaused: 'Pausiert',
+    statusStopped: 'Gestoppt',
+    invalidInterval: 'Please enter a valid interval.',
+    invalidCount: 'Click count must be greater than 0.',
+    invalidRandomRange: 'Maximum interval must be greater than minimum interval.'
+  },
+  en: {
+    appName: 'OP Auto Clicker',
+    ready: 'Ready',
+    running: 'Running',
+    paused: 'Paused',
+    stopped: 'Stopped',
+    home: 'Home',
+    clicker: 'Clicker',
+    presets: 'Presets',
+    history: 'History',
+    settings: 'Settings',
+    interval: 'Interval',
+    click: 'Click',
+    type: 'Type',
+    count: 'Count',
+    start: 'Start',
+    stop: 'Stop',
+    pause: 'Pause',
+    resume: 'Resume',
+    reset: 'Reset',
+    clickTypeSingle: 'Single Click',
+    clickTypeDouble: 'Double Click',
+    left: 'Left',
+    right: 'Right',
+    middle: 'Middle',
+    infinite: '∞',
+    startDelay: 'Start Delay',
+    randomInterval: 'Random Interval',
+    min: 'Min',
+    max: 'Max',
+    quickPresets: 'Quick Presets',
+    recentSessions: 'Recent Sessions',
+    session: 'Session',
+    noPresets: 'No presets yet.',
+    noSessions: 'No sessions yet.',
+    createPreset: '+ Create Preset',
+    savePreset: 'Save Preset',
+    save: 'Save',
+    cancel: 'Cancel',
+    confirm: 'Confirm',
+    settingsTitle: 'Settings',
+    theme: 'Theme',
+    language: 'Language',
+    export: 'Export',
+    import: 'Import',
+    clearHistory: 'Clear History',
+    resetApp: 'Reset app',
+    demoMode: 'Demo Mode',
+    currentHotkey: 'Current Hotkey',
+    changeHotkey: 'Change Hotkey',
+    clickStats: 'Clicks',
+    cps: 'CPS',
+    time: 'Time',
+    virtualScreen: 'Virtual Screen',
+    simpleMode: 'Simple',
+    advancedMode: 'Advanced',
+    hours: 'Hours',
+    minutes: 'Minutes',
+    seconds: 'Seconds',
+    milliseconds: 'Milliseconds',
+    statusReady: 'Ready',
+    statusRunning: 'Running',
+    statusPaused: 'Paused',
+    statusStopped: 'Stopped',
+    invalidInterval: 'Please enter a valid interval.',
+    invalidCount: 'Click count must be greater than 0.',
+    invalidRandomRange: 'Maximum interval must be greater than minimum interval.'
+  }
+};
+
+const DEFAULT_SETTINGS = {
+  theme: 'system',
+  language: 'en',
+  interval: 100,
+  clickType: 'single',
+  mouseButton: 'left',
+  repeatMode: 'infinite',
+  repeatCount: 10000,
+  hotkey: 'F6',
+  randomInterval: false,
+  randomMin: 80,
+  randomMax: 150,
+  positionMode: 'cursor',
+  fixedX: 842,
+  fixedY: 421,
+  startDelay: 0,
+  simpleMode: true,
+  demoMode: true,
+  showToast: true,
+};
+
+const state = {
+  settings: { ...DEFAULT_SETTINGS },
+  currentSection: 'home',
+  status: 'ready',
+  clickCount: 0,
+  totalClicks: 0,
+  sessionStartedAt: null,
+  timerInterval: null,
+  startTimer: null,
+  activePreset: null,
+  presets: [],
+  history: [],
+  sequence: [
+    { id: crypto.randomUUID(), type: 'click', button: 'left', position: { x: 150, y: 200 }, delay: 0 },
+    { id: crypto.randomUUID(), type: 'delay', delay: 500 },
+    { id: crypto.randomUUID(), type: 'click', button: 'left', position: { x: 500, y: 300 }, delay: 0 },
+  ],
+  toast: null,
+  hotkeyListening: false,
+  lastClickAt: 0,
+};
+
+const STORAGE_KEY = 'opAutoClickerState';
+
+function loadState() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return;
+
+  try {
+    const parsed = JSON.parse(saved);
+    state.settings = { ...DEFAULT_SETTINGS, ...parsed.settings };
+    state.presets = Array.isArray(parsed.presets) ? parsed.presets : [];
+    state.history = Array.isArray(parsed.history) ? parsed.history : [];
+    state.sequence = Array.isArray(parsed.sequence) && parsed.sequence.length ? parsed.sequence : state.sequence;
+  } catch (error) {
+    console.warn('Could not parse storage', error);
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    settings: state.settings,
+    presets: state.presets,
+    history: state.history,
+    sequence: state.sequence,
+  }));
+}
+
+function getLang() {
+  return state.settings.language || 'en';
+}
+
+function t(key) {
+  return translations[getLang()][key] || key;
+}
+
+function formatDuration(seconds) {
+  const safe = Math.max(0, seconds || 0);
+  const hrs = String(Math.floor(safe / 3600)).padStart(2, '0');
+  const mins = String(Math.floor((safe % 3600) / 60)).padStart(2, '0');
+  const secs = String(Math.floor(safe % 60)).padStart(2, '0');
+  return `${hrs}:${mins}:${secs}`;
+}
+
+function formatCount(value) {
+  return Number(value || 0).toLocaleString();
+}
+
+function getCurrentIntervalMs() {
+  const { interval } = state.settings;
+  if (!Number.isFinite(interval) || interval <= 0) return 100;
+  return Math.max(1, interval);
+}
+
+function setTheme() {
+  const theme = state.settings.theme || 'system';
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const resolved = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
+  document.body.dataset.theme = resolved;
+}
+
+function updateStatusBadge() {
+  const statusEl = document.querySelector('[data-status-text]');
+  const dotEl = document.querySelector('[data-status-dot]');
+  if (!statusEl || !dotEl) return;
+
+  const map = {
+    ready: { text: t('ready'), dot: 'ready' },
+    running: { text: t('running'), dot: 'running' },
+    paused: { text: t('paused'), dot: 'paused' },
+    stopped: { text: t('stopped'), dot: 'stopped' }
+  };
+
+  const item = map[state.status] || map.ready;
+  statusEl.textContent = item.text;
+  dotEl.dataset.state = item.dot;
+}
+
+function getButtonIcon(button) {
+  switch (button) {
+    case 'left': return '◄';
+    case 'right': return '►';
+    case 'middle': return '◉';
+    default: return '◈';
+  }
+}
+
+function renderHome() {
+  const home = document.createElement('div');
+  home.className = 'page page-home';
+
+  const cards = [
+    {
+      label: t('interval'),
+      value: `${state.settings.interval} ms`,
+      icon: '◔',
+      type: 'interval'
+    },
+    {
+      label: t('click'),
+      value: t(state.settings.mouseButton),
+      icon: '◌',
+      type: 'click'
+    },
+    {
+      label: t('type'),
+      value: state.settings.clickType === 'single' ? t('clickTypeSingle') : t('clickTypeDouble'),
+      icon: '◍',
+      type: 'type'
+    },
+    {
+      label: t('count'),
+      value: state.settings.repeatMode === 'infinite' ? t('infinite') : formatCount(state.settings.repeatCount),
+      icon: '∞',
+      type: 'count'
+    }
+  ];
+
+  const quicks = [100, 250, 500, 1000].map((ms) => `\n      <button class="chip" data-quick-interval="${ms}">${ms} ms</button>\n    `).join('');
+
+  const recent = state.history.slice(0, 2).map((item) => `
+    <div class="history-row">
+      <div class="history-meta">
+        <span class="history-title">Session #${item.id}</span>
+        <span class="history-sub">${formatCount(item.clicks)} clicks • ${item.duration}</span>
+      </div>
+      <div class="history-pill">${item.interval} ms</div>
+    </div>
+  `).join('') || `<div class="empty-text">${t('noSessions')}</div>`;
+
+  const main = `
+    <header class="topbar">
+      <div class="brand-wrap">
+        <div class="brand-icon">✦</div>
+        <div>
+          <h1>${t('appName')}</h1>
+        </div>
+      </div>
+      <div class="status-pill"><span data-status-dot></span><span data-status-text>${t('ready')}</span></div>
+    </header>
+
+    <section class="hero-card glass-card">
+      <div class="hero-grid">
+        <div class="hero-left">
+          <div class="mini-label">${t('interval')}</div>
+          <div class="value-line">${state.settings.interval} ms</div>
+          <div class="mini-label">${t('click')}</div>
+          <div class="value-line">${t(state.settings.mouseButton)}</div>
+          <div class="mini-label">${t('type')}</div>
+          <div class="value-line">${state.settings.clickType === 'single' ? t('clickTypeSingle') : t('clickTypeDouble')}</div>
+        </div>
+        <button class="focus-btn" aria-label="Set target position">
+          <span>◎</span>
+        </button>
+      </div>
+
+      <button class="primary-action" data-action="toggle-start">
+        <span>${state.status === 'running' ? '■' : '▶'}</span>
+        ${state.status === 'running' ? t('stop') : t('start')}
+      </button>
+    </section>
+
+    <section class="stats-row">
+      <div class="stat-box">
+        <span class="stat-label">${t('clickStats')}</span>
+        <strong id="stat-clicks">${formatCount(state.clickCount)}</strong>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">${t('cps')}</span>
+        <strong id="stat-cps">0.0</strong>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">${t('time')}</span>
+        <strong id="stat-time">00:00:00</strong>
+      </div>
+    </section>
+
+    <section class="preset-strip">
+      <div class="section-head">
+        <span>${t('quickPresets')}</span>
+      </div>
+      <div class="chip-row">${quicks}</div>
+    </section>
+
+    <section class="session-strip">
+      <div class="section-head">
+        <span>${t('recentSessions')}</span>
+      </div>
+      <div class="session-list">${recent}</div>
+    </section>
+  `;
+
+  home.innerHTML = main;
+  home.querySelectorAll('[data-quick-interval]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.settings.interval = Number(button.dataset.quickInterval);
+      render();
+      showToast('Preset applied');
+    });
+  });
+
+  home.querySelector('[data-action="toggle-start"]').addEventListener('click', () => {
+    const running = state.status === 'running';
+    if (running) stopClicker();
+    else startClicker();
+  });
+
+  return home;
+}
+
+function renderClicker() {
+  const content = document.createElement('div');
+  content.className = 'page page-clicker';
+
+  content.innerHTML = `
+    <div class="section-header"><h2>${t('clicker')}</h2></div>
+    <div class="segmented">
+      <button class="segment ${state.settings.simpleMode ? 'active' : ''}" data-toggle-mode="simple">${t('simpleMode')}</button>
+      <button class="segment ${!state.settings.simpleMode ? 'active' : ''}" data-toggle-mode="advanced">${t('advancedMode')}</button>
+    </div>
+
+    <div class="panel glass-card">
+      <div class="row-label"><span>⏱</span> <strong>${t('interval')}</strong></div>
+      <div class="time-grid">
+        <label class="numeric-box"><span>${t('hours')}</span><input type="number" min="0" value="${String(Math.floor(state.settings.interval / 3600000)).padStart(2, '0')}" data-unit="hours" /></label>
+        <label class="numeric-box"><span>${t('minutes')}</span><input type="number" min="0" value="${String(Math.floor((state.settings.interval / 60000) % 60)).padStart(2, '0')}" data-unit="minutes" /></label>
+        <label class="numeric-box"><span>${t('seconds')}</span><input type="number" min="0" value="${String(Math.floor((state.settings.interval / 1000) % 60)).padStart(2, '0')}" data-unit="seconds" /></label>
+        <label class="numeric-box"><span>${t('milliseconds')}</span><input type="number" min="0" max="999" value="${String(state.settings.interval % 1000).padStart(3, '0')}" data-unit="milliseconds" /></label>
+      </div>
+      <input type="range" min="1" max="5000" step="1" value="${Math.min(5000, Math.max(1, state.settings.interval))}" class="range" data-range-interval />
+      <div class="value-row"><span>${state.settings.interval} ms</span></div>
+    </div>
+
+    <div class="panel glass-card">
+      <div class="row-label"><span>🖱</span> <strong>${t('clickTypeSingle')}</strong></div>
+      <div class="button-group">
+        <button class="pill-btn ${state.settings.clickType === 'single' ? 'active' : ''}" data-click-type="single">${t('clickTypeSingle')}</button>
+        <button class="pill-btn ${state.settings.clickType === 'double' ? 'active' : ''}" data-click-type="double">${t('clickTypeDouble')}</button>
+      </div>
+    </div>
+
+    <div class="panel glass-card">
+      <div class="row-label"><span>🎯</span> <strong>${t('click')}</strong></div>
+      <div class="button-group">
+        <button class="pill-btn ${state.settings.mouseButton === 'left' ? 'active' : ''}" data-mouse-button="left">${t('left')}</button>
+        <button class="pill-btn ${state.settings.mouseButton === 'right' ? 'active' : ''}" data-mouse-button="right">${t('right')}</button>
+        <button class="pill-btn ${state.settings.mouseButton === 'middle' ? 'active' : ''}" data-mouse-button="middle">${t('middle')}</button>
+      </div>
+    </div>
+
+    <div class="panel glass-card">
+      <div class="row-label"><span>∞</span> <strong>${t('count')}</strong></div>
+      <label class="toggle-row">
+        <input type="radio" name="repeatMode" value="infinite" ${state.settings.repeatMode === 'infinite' ? 'checked' : ''} />
+        <span>${t('infinite')}</span>
+      </label>
+      <label class="toggle-row">
+        <input type="radio" name="repeatMode" value="count" ${state.settings.repeatMode === 'count' ? 'checked' : ''} />
+        <span>${t('count')}</span>
+      </label>
+      <input type="number" class="count-input" value="${state.settings.repeatCount}" data-repeat-count />
+    </div>
+
+    <div class="panel glass-card">
+      <div class="row-label"><span>⚙</span> <strong>${t('randomInterval')}</strong></div>
+      <label class="switch-row">
+        <span>${t('randomInterval')}</span>
+        <input type="checkbox" ${state.settings.randomInterval ? 'checked' : ''} data-random-toggle />
+      </label>
+      <div class="double-inputs">
+        <label class="numeric-box small"><span>${t('min')}</span><input type="number" value="${state.settings.randomMin}" data-random-min /></label>
+        <label class="numeric-box small"><span>${t('max')}</span><input type="number" value="${state.settings.randomMax}" data-random-max /></label>
+      </div>
+    </div>
+
+    <button class="primary-action big" data-action="toggle-start">${state.status === 'running' ? t('stop') : t('start')}</button>
+  `;
+
+  content.querySelectorAll('[data-toggle-mode]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.settings.simpleMode = button.dataset.toggleMode === 'simple';
+      render();
+    });
+  });
+
+  content.querySelectorAll('[data-click-type]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.settings.clickType = button.dataset.clickType;
+      render();
+    });
+  });
+
+  content.querySelectorAll('[data-mouse-button]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.settings.mouseButton = button.dataset.mouseButton;
+      render();
+    });
+  });
+
+  content.querySelector('[data-random-toggle]').addEventListener('change', (event) => {
+    state.settings.randomInterval = event.target.checked;
+    render();
+  });
+
+  content.querySelector('[data-repeat-count]').addEventListener('input', (event) => {
+    state.settings.repeatCount = Number(event.target.value || 1);
+  });
+
+  content.querySelector('[data-random-min]').addEventListener('input', (event) => {
+    state.settings.randomMin = Number(event.target.value || 1);
+  });
+
+  content.querySelector('[data-random-max]').addEventListener('input', (event) => {
+    state.settings.randomMax = Number(event.target.value || 1);
+  });
+
+  content.querySelectorAll('[data-unit]').forEach((input) => {
+    input.addEventListener('input', () => {
+      const unit = input.dataset.unit;
+      const values = {
+        hours: Number(content.querySelector('[data-unit="hours"]').value || 0),
+        minutes: Number(content.querySelector('[data-unit="minutes"]').value || 0),
+        seconds: Number(content.querySelector('[data-unit="seconds"]').value || 0),
+        milliseconds: Number(content.querySelector('[data-unit="milliseconds"]').value || 0),
+      };
+
+      const total = ((values.hours * 3600) + (values.minutes * 60) + values.seconds) * 1000 + values.milliseconds;
+      if (Number.isFinite(total) && total >= 0) {
+        state.settings.interval = total;
+        const range = content.querySelector('[data-range-interval]');
+        if (range) range.value = String(Math.min(5000, Math.max(1, total)));
+        render();
+      }
+    });
+  });
+
+  content.querySelector('[data-range-interval]').addEventListener('input', (event) => {
+    state.settings.interval = Number(event.target.value || 100);
+    render();
+  });
+
+  content.querySelector('[data-action="toggle-start"]').addEventListener('click', () => {
+    if (state.status === 'running') stopClicker();
+    else startClicker();
+  });
+
+  return content;
+}
+
+function renderPresets() {
+  const wrap = document.createElement('div');
+  wrap.className = 'page page-presets';
+  wrap.innerHTML = `
+    <div class="section-header"><h2>${t('presets')}</h2><button class="small-action" data-create-preset>+ ${t('createPreset')}</button></div>
+    <div class="preset-list">
+      ${state.presets.length ? state.presets.map((preset) => `
+        <div class="preset-item glass-card">
+          <div>
+            <strong>${preset.name}</strong>
+            <small>${preset.interval} ms • ${preset.button} • ${preset.clickType}</small>
+          </div>
+          <div class="preset-actions">
+            <button data-load-preset="${preset.id}">Load</button>
+            <button data-delete-preset="${preset.id}">Delete</button>
+          </div>
+        </div>
+      `).join('') : `<div class="empty-text">${t('noPresets')}</div>`}
+    </div>
+  `;
+
+  wrap.querySelector('[data-create-preset]')?.addEventListener('click', () => {
+    const presetName = prompt('Preset name', `Preset ${state.presets.length + 1}`);
+    if (!presetName) return;
+
+    const preset = {
+      id: crypto.randomUUID(),
+      name: presetName,
+      interval: state.settings.interval,
+      button: state.settings.mouseButton,
+      clickType: state.settings.clickType,
+      repeatMode: state.settings.repeatMode,
+      repeatCount: state.settings.repeatCount,
+    };
+
+    state.presets.unshift(preset);
+    saveState();
+    render();
+    showToast('Preset saved');
+  });
+
+  wrap.querySelectorAll('[data-delete-preset]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const id = button.dataset.deletePreset;
+      state.presets = state.presets.filter((p) => p.id !== id);
+      saveState();
+      render();
+    });
+  });
+
+  wrap.querySelectorAll('[data-load-preset]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const id = button.dataset.loadPreset;
+      const preset = state.presets.find((item) => item.id === id);
+      if (!preset) return;
+      state.settings.interval = preset.interval;
+      state.settings.mouseButton = preset.button;
+      state.settings.clickType = preset.clickType;
+      state.settings.repeatMode = preset.repeatMode;
+      state.settings.repeatCount = preset.repeatCount;
+      saveState();
+      render();
+      showToast('Preset loaded');
+    });
+  });
+
+  return wrap;
+}
+
+function renderHistory() {
+  const wrap = document.createElement('div');
+  wrap.className = 'page page-history';
+  wrap.innerHTML = `
+    <div class="section-header"><h2>${t('history')}</h2><button class="small-action" data-clear-history>Clear</button></div>
+    <div class="history-list">
+      ${state.history.length ? state.history.map((item) => `
+        <div class="history-card glass-card">
+          <div>
+            <strong>Session #${item.id}</strong>
+            <small>${formatCount(item.clicks)} clicks • ${item.duration}</small>
+          </div>
+          <span>${item.interval} ms</span>
+        </div>
+      `).join('') : `<div class="empty-text">${t('noSessions')}</div>`}
+    </div>
+  `;
+
+  wrap.querySelector('[data-clear-history]')?.addEventListener('click', () => {
+    state.history = [];
+    saveState();
+    render();
+  });
+
+  return wrap;
+}
+
+function renderSettings() {
+  const wrap = document.createElement('div');
+  wrap.className = 'page page-settings';
+  wrap.innerHTML = `
+    <div class="section-header"><h2>${t('settingsTitle')}</h2></div>
+    <div class="panel glass-card">
+      <label class="field-row"><span>${t('theme')}</span><select data-theme>
+        <option value="dark" ${state.settings.theme === 'dark' ? 'selected' : ''}>Dark</option>
+        <option value="light" ${state.settings.theme === 'light' ? 'selected' : ''}>Light</option>
+        <option value="system" ${state.settings.theme === 'system' ? 'selected' : ''}>System</option>
+      </select></label>
+      <label class="field-row"><span>${t('language')}</span><select data-language>
+        <option value="en" ${state.settings.language === 'en' ? 'selected' : ''}>English</option>
+        <option value="de" ${state.settings.language === 'de' ? 'selected' : ''}>Deutsch</option>
+      </select></label>
+    </div>
+
+    <div class="panel glass-card">
+      <button class="small-action full" data-export>Export</button>
+      <button class="small-action full" data-import>Import</button>
+      <button class="small-action destructive full" data-clear-history>Clear History</button>
+      <button class="small-action destructive full" data-reset-app>Reset App</button>
+    </div>
+  `;
+
+  wrap.querySelector('[data-theme]').addEventListener('change', (event) => {
+    state.settings.theme = event.target.value;
+    saveState();
+    setTheme();
+  });
+
+  wrap.querySelector('[data-language]').addEventListener('change', (event) => {
+    state.settings.language = event.target.value;
+    saveState();
+    render();
+  });
+
+  wrap.querySelector('[data-export]').addEventListener('click', () => {
+    const data = JSON.stringify({
+      settings: state.settings,
+      presets: state.presets,
+      history: state.history,
+    }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'op-auto-clicker.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Configuration exported');
+  });
+
+  wrap.querySelector('[data-import]').addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.onchange = (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result));
+          if (!parsed || typeof parsed !== 'object') throw new Error('Invalid payload');
+          if (parsed.settings) state.settings = { ...DEFAULT_SETTINGS, ...parsed.settings };
+          if (Array.isArray(parsed.presets)) state.presets = parsed.presets;
+          if (Array.isArray(parsed.history)) state.history = parsed.history;
+          saveState();
+          showToast('Configuration imported');
+          render();
+        } catch (error) {
+          console.error(error);
+          showToast('Import failed');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  });
+
+  wrap.querySelector('[data-clear-history]').addEventListener('click', () => {
+    state.history = [];
+    saveState();
+    render();
+  });
+
+  wrap.querySelector('[data-reset-app]').addEventListener('click', () => {
+    localStorage.clear();
+    Object.assign(state.settings, DEFAULT_SETTINGS);
+    state.presets = [];
+    state.history = []; 
+    saveState();
+    render();
+  });
+
+  return wrap;
+}
+
+function showToast(message) {
+  const toast = document.querySelector('.toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add('visible');
+  clearTimeout(state.toast);
+  state.toast = setTimeout(() => toast.classList.remove('visible'), 1800);
+}
+
+function renderNav() {
+  const nav = document.createElement('nav');
+  nav.className = 'bottom-nav';
+  nav.innerHTML = `
+    <button class="nav-item ${state.currentSection === 'home' ? 'active' : ''}" data-section="home">⌂</button>
+    <button class="nav-item ${state.currentSection === 'clicker' ? 'active' : ''}" data-section="clicker">⚡</button>
+    <button class="nav-item ${state.currentSection === 'presets' ? 'active' : ''}" data-section="presets">★</button>
+    <button class="nav-item ${state.currentSection === 'history' ? 'active' : ''}" data-section="history">◷</button>
+    <button class="nav-item ${state.currentSection === 'settings' ? 'active' : ''}" data-section="settings">⚙</button>
+  `;
+
+  nav.querySelectorAll('[data-section]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.currentSection = button.dataset.section;
+      render();
+    });
+  });
+
+  return nav;
+}
+
+function renderPage() {
+  const root = document.createElement('div');
+  root.className = 'shell';
+
+  const pageMap = {
+    home: renderHome(),
+    clicker: renderClicker(),
+    presets: renderPresets(),
+    history: renderHistory(),
+    settings: renderSettings(),
+  };
+
+  root.appendChild(pageMap[state.currentSection]);
+  root.appendChild(renderNav());
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  root.appendChild(toast);
+
+  return root;
+}
+
+function render() {
+  app.innerHTML = '';
+  app.appendChild(renderPage());
+  setTheme();
+  updateStatusBadge();
+  syncStats();
+}
+
+function syncStats() {
+  const clicks = document.querySelector('#stat-clicks');
+  const cps = document.querySelector('#stat-cps');
+  const time = document.querySelector('#stat-time');
+  if (clicks) clicks.textContent = formatCount(state.clickCount);
+  if (cps) cps.textContent = getCps().toFixed(1);
+  if (time) time.textContent = formatDuration(elapsedSeconds());
+}
+
+function elapsedSeconds() {
+  if (!state.sessionStartedAt) return 0;
+  const ms = Date.now() - state.sessionStartedAt;
+  return Math.max(0, ms / 1000);
+}
+
+function getCps() {
+  const elapsed = elapsedSeconds();
+  if (!elapsed || !state.clickCount) return 0;
+  return state.clickCount / elapsed;
+}
+
+function triggerClickEffect() {
+  const virtual = document.querySelector('.virtual-screen');
+  if (!virtual) return;
+  virtual.classList.remove('pulse');
+  void virtual.offsetWidth;
+  virtual.classList.add('pulse');
+}
+
+function doAutoClick() {
+  state.clickCount += 1;
+  state.totalClicks += 1;
+  triggerClickEffect();
+  syncStats();
+
+  if (state.settings.repeatMode === 'count' && state.clickCount >= state.settings.repeatCount) {
+    stopClicker();
+  }
+}
+
+function computeNextInterval() {
+  if (!state.settings.randomInterval) return getCurrentIntervalMs();
+  const min = Math.max(1, Number(state.settings.randomMin || 1));
+  const max = Math.max(min + 1, Number(state.settings.randomMax || min + 1));
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function beginSessionTimer() {
+  clearInterval(state.timerInterval);
+  state.sessionStartedAt = Date.now();
+  state.timerInterval = setInterval(() => {
+    syncStats();
+  }, 250);
+}
+
+function startClicker() {
+  if (!Number.isFinite(state.settings.interval) || state.settings.interval <= 0) {
+    showToast(t('invalidInterval'));
+    return;
+  }
+
+  if (state.settings.repeatMode === 'count' && state.settings.repeatCount <= 0) {
+    showToast(t('invalidCount'));
+    return;
+  }
+
+  if (state.settings.randomInterval && Number(state.settings.randomMax) <= Number(state.settings.randomMin)) {
+    showToast(t('invalidRandomRange'));
+    return;
+  }
+
+  state.status = 'running';
+  if (!state.sessionStartedAt) {
+    beginSessionTimer();
+  }
+  const delayMs = Number(state.settings.startDelay || 0) * 1000;
+
+  if (delayMs > 0) {
+    state.status = 'paused';
+    let countDown = delayMs / 1000;
+    const label = document.querySelector('.primary-action');
+    if (label) label.textContent = `⏳ ${Math.ceil(countDown)}`;
+    const countDownTimer = setInterval(() => {
+      countDown -= 1;
+      if (countDown <= 0) {
+        clearInterval(countDownTimer);
+        state.status = 'running';
+        render();
+        runLoop();
+        return;
+      }
+      if (label) label.textContent = `⏳ ${Math.ceil(countDown)}`;
+    }, 1000);
+    state.startTimer = countDownTimer;
+    return;
+  }
+
+  runLoop();
+  render();
+}
+
+function runLoop() {
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  beginSessionTimer();
+  const tick = () => {
+    if (state.status !== 'running') return;
+    doAutoClick();
+    const nextDelay = computeNextInterval();
+    clearTimeout(state.loopTimer);
+    state.loopTimer = setTimeout(tick, nextDelay);
+  };
+
+  clearTimeout(state.loopTimer);
+  state.loopTimer = setTimeout(tick, computeNextInterval());
+  render();
+}
+
+function stopClicker() {
+  clearTimeout(state.loopTimer);
+  clearInterval(state.timerInterval);
+  state.timerInterval = null;
+  state.status = 'stopped';
+  state.sessionStartedAt = null;
+  saveHistory();
+  render();
+}
+
+function pauseClicker() {
+  if (state.status !== 'running') return;
+  state.status = 'paused';
+  clearTimeout(state.loopTimer);
+  render();
+}
+
+function resumeClicker() {
+  if (state.status !== 'paused') return;
+  state.status = 'running';
+  runLoop();
+}
+
+function resetClicker() {
+  clearTimeout(state.loopTimer);
+  clearInterval(state.timerInterval);
+  state.status = 'ready';
+  state.clickCount = 0;
+  state.totalClicks = 0;
+  state.sessionStartedAt = null;
+  render();
+}
+
+function saveHistory() {
+  const entry = {
+    id: Date.now(),
+    clicks: state.clickCount,
+    duration: formatDuration(elapsedSeconds()),
+    interval: state.settings.interval,
+  };
+  state.history.unshift(entry);
+  state.history = state.history.slice(0, 10);
+  saveState();
+}
+
+function attachKeyboardShortcuts() {
+  document.addEventListener('keydown', (event) => {
+    const key = event.key.toLowerCase();
+    if (event.key === 'F6' || key === 'f6') {
+      if (state.status === 'running') stopClicker();
+      else startClicker();
+    }
+    if (event.key === 'F7') {
+      if (state.status === 'running') pauseClicker();
+    }
+    if (event.key === 'F8') {
+      resetClicker();
+    }
+  });
+}
+
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js').catch((error) => {
+        console.warn('SW registration failed', error);
+      });
+    });
+  }
+}
+
+function init() {
+  loadState();
+  setTheme();
+  attachKeyboardShortcuts();
+  registerServiceWorker();
+  render();
+}
+
+init();
